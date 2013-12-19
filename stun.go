@@ -13,9 +13,24 @@ const (
 )
 
 const (
-	Reserved uint16 = iota
+	_ uint16 = iota
 	Binding
 	SharedSecret
+)
+
+const (
+	_ uint16 = iota
+	MappedAddressCode
+	ResponseAddressCode
+	ChangeAddressCode
+	SourceAddressCode
+	ChangedAddressCode
+	UsernameCode
+	PasswordCode
+	MessageIntegrityCode
+	ErrorCode
+	UnknownAttributesCode
+	ReflectedFromCode
 )
 
 type StunMessage struct {
@@ -252,3 +267,37 @@ func ParseMessage(bytes []byte) StunMessage {
 	return mes
 }
 
+func SendMessage(m StunMessage, local, remote string) StunMessage {
+	laddr,err := net.ResolveUDPAddr("udp",local)
+	if err != nil {
+		panic(err)
+	}
+	raddr,err := net.ResolveUDPAddr("udp",remote)
+	if err != nil {
+		panic(err)
+	}
+
+	conn,err := net.DialUDP("udp",laddr,raddr)
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	_,err = conn.Write(m.Bytes())
+	if err != nil {
+		panic(err)
+	}
+
+	resp := make([]byte,1024)
+	n,err := conn.Read(resp)
+	if err != nil {
+		panic(err)
+	}
+
+	realResp := make([]byte,n)
+	copy(realResp,resp)
+
+	mes := ParseMessage(realResp)
+
+	return mes
+}
